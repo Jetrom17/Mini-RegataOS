@@ -1,98 +1,91 @@
 import telebot
 from telebot import types
 
-# Token do seu bot fornecido pelo BotFather
+# Chave do seu bot fornecida pelo BotFather do Telegram
 TOKEN = 'SEU_TOKEN'
 
+# Inicialização do bot
 bot = telebot.TeleBot(TOKEN)
 
-support_ids = [123, 321, 000]  # Lista de IDs dos suportes.
-tickets = {}
+# Dicionários para armazenar todas as perguntas e respostas em português e inglês
+faq_pt = {
+    "O que é regata?": "Uma regata é uma prova náutica de velocidade entre diversas embarcações à vela, a motor ou a remo, realizando um percurso marcado por bóias que são posicionadas no mar pela organização do evento.",
+    "O que é o Regata OS?": "O Regata OS é um Sistema Operacional baseado em Linux (mais precisamente em openSUSE) desenvolvido para todos os tipos de usuários, porém, com foco especial em gamers e criadores de conteúdo.",
+    "O Regata OS é apenas uma versão fácil de usar do openSUSE?": "Não. O Regata OS tem uma proposta diferente do openSUSE e de outras distribuições Linux baseadas no openSUSE. Embora existam inúmeras diferenças sutis entre o Regata OS e o openSUSE, os exemplos mais óbvios incluem nossos próprios aplicativos, além, é claro, do público-alvo – usuários do Windows.",
+    "O Regata OS é de código aberto?": "O Regata OS é de código aberto, disponível no GitHub sob a licença do MIT, além de ser gratuito. Acreditamos que tudo é possível com tecnologia gratuita e de código aberto.",
+    "Como faço para instalar o Regata OS?": "Confira nosso guia de instalação do Regata OS. Só não se esqueça de fazer backup de fotos, vídeos, arquivos de texto, o que você achar importante, e levar o conteúdo para um disco rígido externo, pendrive ou serviço de armazenamento em nuvem (como Google Drive).",
+    "Qual ISO devo baixar?": "Se você possui uma placa de vídeo NVIDIA em seu desktop ou laptop, baixe o Regata OS ISO que já vem com o driver NVIDIA por padrão, caso contrário, baixe o ISO sem o driver NVIDIA. O Regata OS já possui a versão mais recente do driver de vídeo para GPUs Intel e AMD.",
+    "Preciso criar uma partição swap?": "Não. O Regata OS cria e gerencia a partição swap automaticamente para você.",
+    "Não encontrei um aplicativo na loja, e agora?": "Use este formulário para recomendar novos aplicativos. Sua implementação será estudada pela equipe de desenvolvedores.",
+    "Como posso apoiar o projeto?": "Você pode ajudar o projeto Regata OS promovendo nosso sistema operacional para seus amigos e familiares que desejam experimentar um mundo muito além do Windows. Além disso, também é possível ajudar com feedback."
+}
 
-def generate_support_markup(chat_id):
-    markup = types.InlineKeyboardMarkup()
-    markup.row(types.InlineKeyboardButton("Eu assumo este caso", callback_data=f"assume_{chat_id}")) # Botão que aparece para todos os suportes.
-    return markup
+faq_en = {
+    "What is regatta?": "A regatta is a nautical speed race between various boats, such as sailboats, motorboats, or rowboats, following a course marked by buoys placed in the sea by the event's organization.",
+    "What is Regata OS?": "Regata OS is a Linux-based Operating System (more precisely, on openSUSE) developed for all types of users, but with a special focus on gamers and content creators.",
+    "Is Regata OS just an easy-to-use version of openSUSE?": "No. Regata OS has a different proposal from openSUSE and other Linux distributions based on openSUSE. Although there are numerous subtle differences between Regata OS and openSUSE, the most obvious examples include our own applications, as well as the target audience – Windows users.",
+    "Is Regata OS open source?": "Regata OS is open source, available on GitHub under the MIT license, and it's free. We believe everything is possible with free and open-source technology.",
+    "How do I install Regata OS?": "Check out our Regata OS installation guide. Just don't forget to back up photos, videos, text files, or anything else you find important and transfer the content to an external hard drive, USB flash drive, or cloud storage service (such as Google Drive).",
+    "Which ISO should I download?": "If you have an NVIDIA graphics card in your desktop or laptop, download the Regata OS ISO that already comes with the NVIDIA driver by default; otherwise, download the ISO without the NVIDIA driver. Regata OS already has the latest version of the video driver for Intel and AMD GPUs.",
+    "Do I need to create a swap partition?": "No. Regata OS creates and manages the swap partition automatically for you.",
+    "I didn't find an app in the store, what should I do?": "Use this form to recommend new apps. Your implementation will be studied by the development team.",
+    "How can I support the project?": "You can help the Regata OS project by promoting our operating system to friends and family who want to experience a world beyond Windows. Additionally, you can also help by providing feedback."
+}
 
+# Dicionário para armazenar o estado atual de cada usuário
+user_state = {}
 
-@bot.message_handler(commands=['start'])
-def start(message):
-    bot.reply_to(message, "Olá! Para abrir um ticket, use /ticket") # Para o cliente
+# Lidar com o comando /faq
+@bot.message_handler(commands=['faq'])
+def send_faq(message):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    item_pt = types.InlineKeyboardButton('Português', callback_data='pt')
+    item_en = types.InlineKeyboardButton('English', callback_data='en')
+    markup.add(item_pt, item_en)
 
-# Função do Ticket.
-@bot.message_handler(commands=['ticket'])
-def new_ticket(message):
-    chat_id = message.chat.id
-    if chat_id not in tickets:
-        tickets[chat_id] = {'client_id': message.from_user.id, 'support': None, 'messages': []}
-        for support_id in support_ids:
-            bot.send_message(support_id, f"Novo ticket de {message.from_user.username}:\n{message.text}",
-                             reply_markup=generate_support_markup(chat_id))
-        bot.reply_to(message, "Ticket criado! Aguarde um atendente responder o seu caso em privado.")
-    else:
-        bot.reply_to(message, "Você já tem um ticket aberto. Aguarde uma resposta em privado.")
+    bot.send_message(message.chat.id, "Escolha o idioma / Choose the language:", reply_markup=markup)
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith('assume'))
-def handle_assume_case(call):
-    chat_id = int(call.data.split('_')[1])
-    support_id = call.from_user.id
-    support_username = call.from_user.username  # Obtém o nome de usuário do suporte que clicou no botão "Eu assumo este caso".
+# Lidar com as respostas do idioma
+@bot.callback_query_handler(func=lambda call: call.data in ['pt', 'en'])
+def handle_language(call):
+    language = call.data
 
-    if chat_id in tickets and tickets[chat_id]['support'] is None:
-        tickets[chat_id]['support'] = support_id
+    if language == 'pt':
+        send_questions(call.message, faq_pt)
+    elif language == 'en':
+        send_questions(call.message, faq_en)
 
-        for id in support_ids:
-            if id != support_id:
-                bot.send_message(id, f"Suporte @{support_username} assumiu o caso!")
+# Função para enviar as perguntas
+def send_questions(message, faq):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    for key in faq.keys():
+        item = types.InlineKeyboardButton(key, callback_data=key)
+        markup.add(item)
+    bot.send_message(message.chat.id, "Escolha uma pergunta / Choose a question:", reply_markup=markup)
+    user_state[message.chat.id] = faq
 
-        bot.send_message(chat_id, "Um suporte assumiu o seu caso!")
-        bot.answer_callback_query(call.id, "Você assumiu este caso.")
-    else:
-        if tickets[chat_id]['support'] is not None:
-            support_name = f"@{support_username}"  # Usa o nome de usuário como nome.
-            bot.answer_callback_query(call.id, f"Este caso já foi assumido por {support_name}.")
-        else:
-            bot.answer_callback_query(call.id, "Este caso já foi assumido ou não está mais disponível.")
+# Lidar com as perguntas escolhidas
+@bot.callback_query_handler(func=lambda call: call.data in faq_pt or call.data in faq_en)
+def handle_question(call):
+    question = call.data
+    faq = user_state.get(call.message.chat.id)
+    if faq and question in faq:
+        bot.edit_message_text(chat_id=call.message.chat.id, message_id=call.message.message_id, text=faq[question])
+        send_back_button(call.message)
 
-# Chat privado, entre o "client and support".
-@bot.message_handler(func=lambda message: True, content_types=['text'])
-def handle_message(message):
-    chat_id = message.chat.id
-    user_id = message.from_user.id
+# Enviar botão "Voltar"
+def send_back_button(message):
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    back_button = types.InlineKeyboardButton('Voltar / Back', callback_data='back')
+    markup.add(back_button)
+    bot.send_message(message.chat.id, "Pressione 'Voltar' para retornar às perguntas / Press 'Back' to return to the questions:", reply_markup=markup)
 
-    if chat_id in tickets and user_id == tickets[chat_id]['client_id']:
-        if 'support' in tickets[chat_id] and tickets[chat_id]['support'] is not None:
-            support = tickets[chat_id]['support']
-            bot.send_message(support, f"Cliente: {message.text}", reply_markup=generate_close_markup(chat_id))
-            tickets[chat_id]['messages'].append((message.text, user_id))
-            bot.send_message(chat_id, "Mensagem enviada para o suporte!")
-        else:
-            bot.send_message(chat_id, "Aguarde um suporte assumir o seu caso.")
-    elif 'support' in tickets.get(chat_id, {}) and tickets[chat_id]['support'] is not None and chat_id in tickets and user_id == tickets[chat_id]['support']:
-        client_id = tickets[chat_id]['client_id']
-        bot.send_message(client_id, f"Suporte: {message.text}", reply_markup=generate_close_markup(chat_id))
-        tickets[chat_id]['messages'].append((message.text, user_id))
-        bot.send_message(client_id, "Mensagem enviada para o cliente!")
-    else:
-        bot.send_message(chat_id, "Por favor, use um comando válido ou aguarde por uma interação do suporte.")
+# Lidar com o botão "Voltar"
+@bot.callback_query_handler(func=lambda call: call.data == 'back')
+def handle_back(call):
+    faq = user_state.get(call.message.chat.id)
+    if faq:
+        send_questions(call.message, faq)
 
-# Encerra o caso.
-def generate_close_markup(chat_id):
-    markup = types.InlineKeyboardMarkup()
-    markup.row(types.InlineKeyboardButton("Encerrar caso", callback_data=f"close_{chat_id}"))
-    return markup
-
-
-@bot.callback_query_handler(func=lambda call: call.data.startswith('close'))
-def handle_close_case(call):
-    chat_id = int(call.data.split('_')[1])
-    support_id = call.from_user.id
-    if chat_id in tickets and tickets[chat_id]['support'] == support_id:
-        del tickets[chat_id]
-        bot.send_message(support_id, "O caso foi encerrado.")
-        bot.answer_callback_query(call.id, "Caso encerrado.")
-    else:
-        bot.answer_callback_query(call.id, "Você não tem permissão para encerrar este caso.")
-
-# Bot em loop.
+# Iniciar o bot
 bot.polling()
