@@ -8,3 +8,10 @@ Atualmente, dia 23/12/2023, o bot funciona quando acionado pelo comando `/faq` q
 ```
 git clone https://github.com/Jetrom17/Mini-RegataOS
 ```
+
+Verifique as alteracões feitas em: https://raw.githubusercontent.com/Jetrom17/Mini-RegataOS/main/log.txt
+ou
+pelo seu terminal: 
+```
+curl https://raw.githubusercontent.com/Jetrom17/Mini-RegataOS/main/log.txt
+```
