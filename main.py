@@ -1,9 +1,12 @@
 import telebot
 from telebot import types
+import requests
+from bs4 import BeautifulSoup
+import re
 import time
 
 # Chave do seu bot fornecida pelo BotFather do Telegram
-TOKEN = 'YOUR-TOKEN!'
+TOKEN = 'TOKEN'
 
 # Initialize the bot
 bot = telebot.TeleBot(TOKEN)
@@ -45,6 +48,36 @@ def handle_question(call):
     # Schedule deletion of the message after 30 seconds
     time.sleep(30)
     bot.delete_message(call.message.chat.id, call.message.message_id)
+    
+# Função para obter o link mais recente da ISO
+def get_latest_iso_link():
+    url = 'https://sourceforge.net/projects/regataos/files/regataos-23/'
+    
+    # Realizar a requisição para a página
+    response = requests.get(url)
+    
+    # Analisar o conteúdo HTML da página
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Encontrar o primeiro resultado que corresponde ao padrão desejado
+    result = soup.find('a', {'title': re.compile(r'Regata_OS_23-nv_en-US.*\.iso')})
+    
+    if result:
+        # Obter o link do resultado
+        iso_link = result['href']
+        return iso_link
+    
+    return None
+
+# Novo comando /iso para fornecer o link da ISO mais recente
+@bot.message_handler(commands=['iso'])
+def send_latest_iso_link(message):
+    latest_iso_link = get_latest_iso_link()
+    
+    if latest_iso_link:
+        bot.send_message(message.chat.id, latest_iso_link)
+    else:
+        bot.send_message(message.chat.id, "Não foi possível obter o link da ISO mais recente no momento.")
 
 # Start the bot
 bot.polling()
